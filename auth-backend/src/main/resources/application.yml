@@ -1,0 +1,45 @@
+server:
+  port: 8081
+
+
+security:
+  jwt:
+    # Provide via environment: export JWT_SECRET='a-64-plus-character-random-string'
+    secret: ${JWT_SECRET:saiofal;vkasfbehwqpofhjashofjaswfpojasfvbafop[hfifonfo[shjfwefjjfslajfsahfoshffasnbash[f}
+    issuer: ${JWT_ISSUER:auth-backend}
+    access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}       # 15 minutes
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL_SECONDS:1209600} # 14 days
+    refresh-cookie-name: ${JWT_REFRESH_COOKIE_NAME:refresh_token}
+    cookie-secure: ${JWT_COOKIE_SECURE:true}
+    cookie-same-site: ${JWT_COOKIE_SAME_SITE:Lax}
+spring:
+  application:
+    name: auth-backend
+
+  #database configuration
+  datasource:
+    # Neon JDBC URL (copied from your psql string, but with jdbc: prefix)
+    url: jdbc:postgresql://ep-still-salad-adldx59m-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
+    username: neondb_owner
+    password: npg_K5IwUZoWm3XJ
+
+    hikari:
+      pool-name: neon-hikari
+      maximum-pool-size: 10
+      minimum-idle: 2
+      idle-timeout: 30000        # 30s
+      connection-timeout: 20000  # 20s
+      max-lifetime: 1800000      # 30m (keep below Neon’s TCP idle timeouts)
+      validation-timeout: 5000
+      leak-detection-threshold: 0
+      initialization-fail-timeout: -1  # don't fail app if DB is momentarily unavailable
+
+  jpa:
+      hibernate:
+        ddl-auto: update            # dev only; use Flyway in prod
+      open-in-view: false
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+          jdbc.lob.non_contextual_creation: true
+

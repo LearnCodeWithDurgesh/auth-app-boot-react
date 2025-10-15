@@ -2,6 +2,8 @@ package com.substring.auth.app.auth.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.*;
@@ -17,6 +19,8 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    private  String providerId;
 
     @Column(unique = true, nullable = false)
     private String email;

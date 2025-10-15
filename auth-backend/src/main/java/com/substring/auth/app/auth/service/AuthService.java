@@ -2,6 +2,7 @@ package com.substring.auth.app.auth.service;
 
 import com.substring.auth.app.auth.dto.RegisterRequest;
 import com.substring.auth.app.auth.dto.RegisterResponse;
+import com.substring.auth.app.auth.model.Provider;
 import com.substring.auth.app.auth.model.User;
 import com.substring.auth.app.auth.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class AuthService {
         User user = User.builder()
                 .email(request.getEmail().trim().toLowerCase())
                 .name(request.getName())
+                .provider(Provider.LOCAL)
                 .password(encoded) // null allowed for OAuth-only users
                 .image(request.getImage())
                 .enabled(true)

@@ -6,6 +6,8 @@ import com.substring.auth.app.auth.model.User;
 import com.substring.auth.app.auth.repository.RefreshTokenRepository;
 import com.substring.auth.app.auth.repository.UserRepository;
 import com.substring.auth.app.auth.service.AuthService;
+import com.substring.auth.app.auth.service.CookieService;
+
 import com.substring.auth.app.security.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
@@ -13,10 +15,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -43,18 +43,7 @@ public class AuthController {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtService jwtService;
     private final AuthService authService;
-
-    @Value("${security.jwt.refresh-cookie-name:refresh_token}")
-    private String refreshCookieName;
-
-    @Value("${security.jwt.cookie-secure:true}")
-    private boolean cookieSecure;
-
-    @Value("${security.jwt.cookie-same-site:Lax}")
-    private String cookieSameSite;
-
-    @Value("${security.jwt.cookie-domain:}")
-    private String cookieDomain;
+    private final CookieService cookieService;
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {
@@ -64,13 +53,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
-        // Authenticate using Spring Security auth manager
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password())
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        // Lookup user and ensure they are allowed to log in
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
         if (user.getPassword() == null) {
@@ -79,8 +66,6 @@ public class AuthController {
         if (!user.isEnabled()) {
             throw new DisabledException("User is disabled");
         }
-
-        // Create and persist refresh token (jti tracked)
         String jti = UUID.randomUUID().toString();
         RefreshToken rt = RefreshToken.builder()
                 .jti(jti)
@@ -94,11 +79,10 @@ public class AuthController {
         String accessToken = jwtService.generateAccessToken(user);
         String refreshToken = jwtService.generateRefreshToken(user, jti);
 
-        // Attach secure HttpOnly refresh token cookie and add anti-caching headers
-        attachRefreshCookie(response, refreshToken, (int) jwtService.getRefreshTtlSeconds());
-        addNoStoreHeaders(response);
+        // Use CookieUtil (same behavior)
+        cookieService.attachRefreshCookie(response, refreshToken, (int) jwtService.getRefreshTtlSeconds());
+        cookieService.addNoStoreHeaders(response);
 
-        // Also include access token in Authorization response header for convenience
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .body(TokenResponse.bearer(accessToken, refreshToken, 900));
@@ -131,7 +115,7 @@ public class AuthController {
             throw new BadCredentialsException("Token subject mismatch");
         }
 
-        // Rotate token: revoke old, issue new
+        // Rotate
         stored.setRevoked(true);
         String newJti = UUID.randomUUID().toString();
         stored.setReplacedByToken(newJti);
@@ -150,8 +134,9 @@ public class AuthController {
         String newAccess = jwtService.generateAccessToken(user);
         String newRefresh = jwtService.generateRefreshToken(user, newJti);
 
-        attachRefreshCookie(response, newRefresh, (int) jwtService.getRefreshTtlSeconds());
-        addNoStoreHeaders(response);
+        // Use CookieUtil (same behavior)
+        cookieService.attachRefreshCookie(response, newRefresh, (int) jwtService.getRefreshTtlSeconds());
+        cookieService.addNoStoreHeaders(response);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + newAccess)
@@ -160,7 +145,6 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
-        // Best effort revoke current refresh token if present
         readRefreshTokenFromRequest(null, request).ifPresent(token -> {
             try {
                 if (jwtService.isRefreshToken(token)) {
@@ -173,9 +157,10 @@ public class AuthController {
             } catch (JwtException ignored) {
             }
         });
-        // Clear cookie and security context; prevent caching
-        clearRefreshCookie(response);
-        addNoStoreHeaders(response);
+
+        // Use CookieUtil (same behavior)
+        cookieService.clearRefreshCookie(response);
+        cookieService.addNoStoreHeaders(response);
         SecurityContextHolder.clearContext();
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
@@ -184,7 +169,7 @@ public class AuthController {
         // 1) Prefer secure HttpOnly cookie
         if (request.getCookies() != null) {
             Optional<String> fromCookie = Arrays.stream(request.getCookies())
-                    .filter(c -> refreshCookieName.equals(c.getName()))
+                    .filter(c -> cookieService.getRefreshCookieName().equals(c.getName())) // <-- use util name
                     .map(Cookie::getValue)
                     .filter(v -> v != null && !v.isBlank())
                     .findFirst();
@@ -193,18 +178,18 @@ public class AuthController {
             }
         }
 
-        // 2) Accept explicit body when provided
+        // 2) Body
         if (body != null && body.refreshToken() != null && !body.refreshToken().isBlank()) {
             return Optional.of(body.refreshToken().trim());
         }
 
-        // 3) Custom header explicitly carrying refresh token
+        // 3) Custom header
         String refreshHeader = request.getHeader("X-Refresh-Token");
         if (refreshHeader != null && !refreshHeader.isBlank()) {
             return Optional.of(refreshHeader.trim());
         }
 
-        // 4) Lastly, Authorization: Bearer <token> but only if it is actually a refresh token
+        // 4) Authorization: Bearer <token> (only if actually refresh)
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader != null && authHeader.regionMatches(true, 0, "Bearer ", 0, 7)) {
             String candidate = authHeader.substring(7).trim();
@@ -214,44 +199,10 @@ public class AuthController {
                         return Optional.of(candidate);
                     }
                 } catch (Exception ignored) {
-                    // fall through to empty
                 }
             }
         }
 
         return Optional.empty();
-    }
-
-    private void attachRefreshCookie(HttpServletResponse response, String value, int maxAgeSeconds) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(refreshCookieName, value)
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(maxAgeSeconds)
-                .sameSite(cookieSameSite);
-        if (cookieDomain != null && !cookieDomain.isBlank()) {
-            builder.domain(cookieDomain);
-        }
-        ResponseCookie cookie = builder.build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void clearRefreshCookie(HttpServletResponse response) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(refreshCookieName, "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .path("/")
-                .maxAge(0)
-                .sameSite(cookieSameSite);
-        if (cookieDomain != null && !cookieDomain.isBlank()) {
-            builder.domain(cookieDomain);
-        }
-        ResponseCookie cookie = builder.build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void addNoStoreHeaders(HttpServletResponse response) {
-        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
-        response.setHeader("Pragma", "no-cache");
     }
 }

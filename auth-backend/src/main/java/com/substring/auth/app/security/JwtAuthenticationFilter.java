@@ -41,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (jwtService.isAccessToken(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
                     Jws<io.jsonwebtoken.Claims> jws = jwtService.parse(token);
                     Claims claims = jws.getBody();
-                    UUID userId = UUID.fromString(claims.getSubject());
+                    java.util.UUID userId =UUID.fromString(claims.getSubject());
                     userRepository.findById(userId).ifPresent(user -> {
                         List<GrantedAuthority> authorities = user.getRoles() == null ? java.util.List.of()
                                 : user.getRoles().stream()

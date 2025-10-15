@@ -15,6 +15,8 @@ security:
 spring:
   application:
     name: auth-backend
+  profiles:
+    active: dev
 
   #database configuration
   datasource:
@@ -35,11 +37,11 @@ spring:
       initialization-fail-timeout: -1  # don't fail app if DB is momentarily unavailable
 
   jpa:
+    hibernate:
+      ddl-auto: update            # dev only; use Flyway in prod
+    open-in-view: false
+    properties:
       hibernate:
-        ddl-auto: update            # dev only; use Flyway in prod
-      open-in-view: false
-      properties:
-        hibernate:
-          dialect: org.hibernate.dialect.PostgreSQLDialect
-          jdbc.lob.non_contextual_creation: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc.lob.non_contextual_creation: true
 

@@ -4,6 +4,7 @@ import com.substring.auth.app.auth.model.Role;
 import com.substring.auth.app.auth.model.User;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.Getter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ public class JwtService {
 
     private final SecretKey key;
     private final long accessTtlSeconds;
+    @Getter
     private final long refreshTtlSeconds;
     private final String issuer;
 
@@ -98,7 +100,4 @@ public class JwtService {
         return parse(token).getBody().getId();
     }
 
-    public long getRefreshTtlSeconds() {
-        return refreshTtlSeconds;
-    }
 }

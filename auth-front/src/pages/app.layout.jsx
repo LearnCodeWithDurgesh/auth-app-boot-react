@@ -1,8 +1,11 @@
+import { useAuthStore } from "@/components/auth/auth";
 import Navbar from "@/components/navbar";
-import React from "react";
+import React, { use } from "react";
 import { Outlet } from "react-router";
 
 function AppLayout() {
+  const bootStrap = useAuthStore((state) => state.bootstrap);
+  bootStrap();
   return (
     <div>
       <Navbar />

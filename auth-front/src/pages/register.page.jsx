@@ -7,8 +7,12 @@ import { Separator } from "@/components/ui/separator";
 import { Mail, Lock, User as UserIcon } from "lucide-react";
 import AuthLayout from "./auth.layout";
 import OAuthButtons from "@/components/auth/oauth.buttons";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
+import { signup } from "@/services/auth.service";
+import toast from "react-hot-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertCircleIcon } from "lucide-react";
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -16,20 +20,19 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const navigate = useNavigate(); // Placeholder for navigation function
   async function onSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`${API_BASE}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
-      if (!r.ok) throw new Error((await r.text()) || "Registration failed");
-      window.location.href = "/login";
+      const r = await signup({ name, email, password });
+      console.log(r);
+      toast.success("Account created successfully! Please log in.");
+      navigate("/login");
     } catch (err) {
-      setError(err?.message || "Something went wrong");
+      console.log(err);
+      setError(err?.response?.data?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -98,9 +101,13 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
+          <Alert variant={"destructive"}>
+            <AlertCircleIcon />
+            <AlertTitle className="ml-2">
+              There was an error creating your account
+            </AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
         <Button type="submit" className="w-full" disabled={loading}>

@@ -1,9 +1,12 @@
 package com.substring.auth.app.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import com.substring.auth.app.security.CustomUserDetailsService;
 import com.substring.auth.app.security.JwtAuthenticationFilter;
 import com.substring.auth.app.security.oauth2.OAuth2SuccessHandler;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,7 +27,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -32,21 +38,23 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final CustomUserDetailsService userDetailsService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
 
     @Value("${app.auth.failure-redirect}")
-    private  String failureRedirectURL;
+    private String failureRedirectURL;
+
+    private Logger logger = Logger.getLogger(SecurityConfig.class.getName());
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
@@ -55,23 +63,41 @@ public class SecurityConfig {
                                 .successHandler(oAuth2SuccessHandler)
                                 .failureHandler((req, resp, e) -> {
                                     resp.setStatus(401);
-                                    resp.sendRedirect(failureRedirectURL+"?error="+e.getMessage());
+                                    resp.sendRedirect(failureRedirectURL + "?error=" + e.getMessage());
                                 })
                 )
                 .logout(AbstractHttpConfigurer::disable)
 
-                .authenticationProvider(daoAuthenticationProvider())
+
+                .exceptionHandling(eh -> eh.authenticationEntryPoint((req, resp, e) -> {
+                    e.printStackTrace();
+                    resp.setStatus(401);
+                    resp.setContentType("application/json");
+
+                    String message = (String) req.getAttribute(
+                            "exception"
+                    );
+
+                    ObjectMapper om = new ObjectMapper();
+
+                    if (message != null && message.trim().equals("token_expired")) {
+                        resp.getWriter().println(om.writeValueAsString(Map.of("message", "token_expired")));
+
+                        return;
+                    } else if (message != null && message.trim().equals("invalid_token")) {
+                        resp.getWriter().println(om.writeValueAsString(Map.of("message", "invalid_token")));
+                    }else{
+                        resp.getWriter().println(om.writeValueAsString(Map.of("message", e.getMessage())));
+                    }
+
+
+                     }))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }
 
-    @Bean
-    public DaoAuthenticationProvider daoAuthenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(passwordEncoder());
-        provider.setUserDetailsService(userDetailsService);
-        return provider;
-    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration cfg) throws Exception {

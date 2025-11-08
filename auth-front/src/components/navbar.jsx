@@ -11,23 +11,31 @@ import {
 import { Menu, LogIn, UserPlus, Moon, Sun } from "lucide-react";
 import { NavLink } from "react-router"; // <-- fix import
 import { useTheme } from "next-themes";
+import { useAuthStore } from "./auth/auth";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();
-
+  const authenticated =
+    useAuthStore((state) => state.status) === "authenticated";
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
   const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <header className="z-50 border-b bg-background/70 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         {/* Brand */}
-        <a href="/" className="inline-flex items-center gap-2 font-semibold">
+        <NavLink
+          to={"/"}
+          href="/"
+          className="inline-flex items-center gap-2 font-semibold"
+        >
           <span
             className="inline-block h-6 w-6 rounded-md bg-gradient-to-br from-primary to-primary/40"
             aria-hidden
           />
           <span className="text-base tracking-tight">Auth App</span>
-        </a>
+        </NavLink>
 
         {/* Desktop actions */}
         <nav className="hidden items-center gap-2 md:flex">
@@ -46,16 +54,62 @@ export default function Navbar() {
             )}
           </Button>
 
-          <NavLink to="/login" aria-label="Login">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <LogIn className="h-4 w-4" /> Login
-            </Button>
-          </NavLink>
-          <NavLink to="/register" aria-label="Register">
-            <Button size="sm" className="gap-2">
-              <UserPlus className="h-4 w-4" /> Register
-            </Button>
-          </NavLink>
+          {authenticated && (
+            <>
+              <NavLink to="/dashboard" aria-label="Dashboard">
+                <Button
+                  variant={"ghost"}
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                >
+                  Dashboard
+                </Button>
+              </NavLink>
+              <NavLink to="#" aria-label="Login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                >
+                  {user?.name}
+                </Button>
+              </NavLink>
+
+              <NavLink to="#" aria-label="Login">
+                <Button
+                  onClick={logout}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                >
+                  Logout
+                </Button>
+              </NavLink>
+            </>
+          )}
+
+          {!authenticated && (
+            <>
+              <NavLink to="/login" aria-label="Login">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                >
+                  Login
+                </Button>
+              </NavLink>
+              <NavLink to="/register" aria-label="Register">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 cursor-pointer"
+                >
+                  Register
+                </Button>
+              </NavLink>
+            </>
+          )}
         </nav>
 
         {/* Mobile menu */}
@@ -101,12 +155,12 @@ export default function Navbar() {
                     variant="ghost"
                     className="w-full justify-start gap-2"
                   >
-                    <LogIn className="h-4 w-4" /> Login
+                    Login
                   </Button>
                 </NavLink>
                 <NavLink to="/register" className="block" aria-label="Register">
                   <Button className="w-full justify-start gap-2">
-                    <UserPlus className="h-4 w-4" /> Register
+                    Register
                   </Button>
                 </NavLink>
               </div>

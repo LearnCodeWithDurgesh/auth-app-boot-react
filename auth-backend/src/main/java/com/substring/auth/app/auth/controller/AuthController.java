@@ -8,6 +8,7 @@ import com.substring.auth.app.auth.repository.UserRepository;
 import com.substring.auth.app.auth.service.AuthService;
 import com.substring.auth.app.auth.service.CookieService;
 
+import com.substring.auth.app.auth.service.UserService;
 import com.substring.auth.app.security.JwtService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
@@ -25,16 +26,18 @@ import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -44,9 +47,10 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuthService authService;
     private final CookieService cookieService;
+    private final UserService userService;
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
         RegisterResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -54,9 +58,7 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.email(), request.password())
-        );
+        Authentication authentication = authenticate(request);
         SecurityContextHolder.getContext().setAuthentication(authentication);
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
@@ -85,7 +87,17 @@ public class AuthController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                .body(TokenResponse.bearer(accessToken, refreshToken, 900));
+                .body(TokenResponse.bearerWithUser(accessToken, refreshToken, 900, new UserDto(user.getName(), user.getEmail(), user.isEnabled(),user.getImage(), user.getCreatedAt(), user.getUpdatedAt())));
+    }
+
+    private Authentication authenticate(LoginRequest request) {
+        try {
+            return authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+            );
+        } catch (Exception e) {
+            throw new BadCredentialsException("Invalid username or password !!");
+        }
     }
 
     @PostMapping("/refresh")
@@ -204,5 +216,10 @@ public class AuthController {
         }
 
         return Optional.empty();
+    }
+
+    @GetMapping("/me")
+    public User getCurrentUser(Principal principal) {
+        return userRepository.findByEmail(principal.getName()).orElseThrow(() -> new UsernameNotFoundException("You are not loggedIn"));
     }
 }

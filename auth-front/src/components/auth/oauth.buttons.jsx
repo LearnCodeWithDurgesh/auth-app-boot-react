@@ -9,9 +9,11 @@ export default function OAuthButtons({ loading }) {
         variant="outline"
         type="button"
         disabled={loading}
-        className="w-full"
+        className="w-full cursor-pointer"
         onClick={() => {
-          window.location.href = `${API_BASE}/oauth2/authorization/google`;
+          window.location.href = `${
+            import.meta.env.VITE_BASE_URL || "http://localhost:8081/"
+          }oauth2/authorization/google`;
         }}
         aria-label="Continue with Google"
       >
@@ -21,9 +23,11 @@ export default function OAuthButtons({ loading }) {
         variant="outline"
         type="button"
         disabled={loading}
-        className="w-full"
+        className="w-full cursor-pointer"
         onClick={() => {
-          window.location.href = `${API_BASE}/oauth2/authorization/github`;
+          window.location.href = `${
+            import.meta.env.VITE_BASE_URL || "http://localhost:8081/"
+          }oauth2/authorization/github`;
         }}
         aria-label="Continue with GitHub"
       >

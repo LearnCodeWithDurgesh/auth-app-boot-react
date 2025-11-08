@@ -4,37 +4,32 @@ import { CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Mail, Lock, LogIn } from "lucide-react";
+import { Mail, Lock, LogIn, AlertCircleIcon } from "lucide-react";
 import AuthLayout from "./auth.layout.jsx";
 import OAuthButtons from "@/components/auth/oauth.buttons.jsx";
-import { NavLink } from "react-router";
+import { NavLink, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
+import { useAuthStore } from "@/components/auth/auth.js";
+import toast from "react-hot-toast";
+import { Alert, AlertTitle } from "@/components/ui/alert.jsx";
 export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const login = useAuthStore((state) => state.login);
+  const navigate = useNavigate();
   async function onSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const r = await fetch(`${API_BASE}/api/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // important if server sets cookies
-        body: JSON.stringify({ email, password }),
-      });
-      if (!r.ok) throw new Error((await r.text()) || "Login failed");
-      const data = await r.json();
-      sessionStorage.setItem(
-        "accessToken",
-        data.accessToken || data.token || ""
-      );
-      window.location.href = "/dashboard";
+      await login({ email, password });
+      navigate("/dashboard");
+      toast.success("Logged in successfully");
     } catch (err) {
-      setError(err?.message || "Something went wrong");
+      console.log(err);
+      setError(err?.response?.data?.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -86,9 +81,10 @@ export function LoginPage() {
         </div>
 
         {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
+          <Alert variant={"destructive"}>
+            <AlertCircleIcon />
+            <AlertTitle className="ml-2">{error}</AlertTitle>
+          </Alert>
         )}
 
         <Button type="submit" className="w-full" disabled={loading}>

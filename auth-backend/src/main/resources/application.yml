@@ -21,9 +21,9 @@ spring:
   #database configuration
   datasource:
     # Neon JDBC URL (copied from your psql string, but with jdbc: prefix)
-    url: jdbc:postgresql://ep-still-salad-adldx59m-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require
-    username: neondb_owner
-    password: npg_K5IwUZoWm3XJ
+    url: jdbc:mysql://localhost:3306/auth_app
+    username: root32523
+    password: root1234235
 
     hikari:
       pool-name: neon-hikari
@@ -39,9 +39,46 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update            # dev only; use Flyway in prod
-    open-in-view: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        jdbc.lob.non_contextual_creation: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+    database-platform: org.hibernate.dialect.MySQL8Dialect
 
+
+  security:
+    #oauth2 configuration
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID}
+            client-secret: ${GITHUB_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - user:email
+              - read:user
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope:
+              - email
+              - profile
+              - openid
+        provider:
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+            user-name-attribute: id
+
+
+app:
+  cors:
+    allowed-origins: "http://localhost:5173"
+  auth:
+    success-redirect: "http://localhost:5173/auth/success"
+    failure-redirect: "http://localhost:5173/auth/failure"
+
+
+logging.level.com.substring.auth.app: DEBUG

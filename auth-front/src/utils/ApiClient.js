@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useAuthStore } from "@/components/auth/auth";
+import { useAuthStore } from "@/utils/auth";
 import { refreshToken } from "@/services/auth.service";
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8081/api/v1",

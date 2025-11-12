@@ -1,4 +1,4 @@
-import { useAuthStore } from "@/components/auth/auth";
+import { useAuthStore } from "@/utils/auth";
 import Navbar from "@/components/navbar";
 import React, { use } from "react";
 import { Outlet } from "react-router";

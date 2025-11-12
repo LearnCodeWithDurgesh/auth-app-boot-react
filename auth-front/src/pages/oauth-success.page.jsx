@@ -2,7 +2,7 @@ import { refreshToken } from "@/services/auth.service";
 import React, { useEffect } from "react";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router";
-import { useAuthStore } from "@/components/auth/auth";
+import { useAuthStore } from "@/utils/auth";
 function OAuthSuccessPage() {
   const setAccessToken = useAuthStore((state) => state.setAccessToken);
   const boostrap = useAuthStore((state) => state.bootstrap);

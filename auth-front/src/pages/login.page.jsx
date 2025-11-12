@@ -9,7 +9,7 @@ import AuthLayout from "./auth.layout.jsx";
 import OAuthButtons from "@/components/auth/oauth.buttons.jsx";
 import { NavLink, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
-import { useAuthStore } from "@/components/auth/auth.js";
+import { useAuthStore } from "@/utils/auth.js";
 import toast from "react-hot-toast";
 import { Alert, AlertTitle } from "@/components/ui/alert.jsx";
 export function LoginPage() {

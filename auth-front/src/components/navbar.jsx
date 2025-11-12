@@ -11,7 +11,7 @@ import {
 import { Menu, LogIn, UserPlus, Moon, Sun } from "lucide-react";
 import { NavLink } from "react-router"; // <-- fix import
 import { useTheme } from "next-themes";
-import { useAuthStore } from "./auth/auth";
+import { useAuthStore } from "../utils/auth";
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme();

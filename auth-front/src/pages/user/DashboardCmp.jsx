@@ -60,7 +60,7 @@ import {
   FolderGit2,
 } from "lucide-react";
 import { useState } from "react";
-import { useAuthStore } from "@/components/auth/auth";
+import { useAuthStore } from "@/utils/auth";
 import { getCurrentUser } from "@/services/auth.service";
 import toast from "react-hot-toast";
 

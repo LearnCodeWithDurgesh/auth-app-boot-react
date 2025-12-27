@@ -1,16 +1,18 @@
 package com.substring.auth.app.security;
 
-import com.substring.auth.app.auth.repository.UserRepository;
+import com.substring.auth.app.helpers.UserHelper;
+import com.substring.auth.app.repositories.UserRepository;
 import io.jsonwebtoken.*;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -27,57 +29,78 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            FilterChain filterChain
-    ) throws ServletException, IOException {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (header != null && header.startsWith("Bearer ")) {
-            String token = header.substring(7);
-            try {
-                if (jwtService.isAccessToken(token) && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    Jws<io.jsonwebtoken.Claims> jws = jwtService.parse(token);
-                    Claims claims = jws.getBody();
-                    java.util.UUID userId = UUID.fromString(claims.getSubject());
-                    userRepository.findById(userId).ifPresent(user -> {
-                        List<GrantedAuthority> authorities = user.getRoles() == null ? java.util.List.of()
-                                : user.getRoles().stream()
-                                .map(r -> new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + r.getName()))
-                                .collect(Collectors.toList());
-                        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                                user.getEmail(), null, authorities
-                        );
-                        auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                        SecurityContextHolder.getContext().setAuthentication(auth);
-                    });
-                }
-            } catch (ExpiredJwtException ignored) {
-                // Let exception handler deal at controller level when endpoints require auth
-//                ignored.printStackTrace();
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
-                request.setAttribute("exception", "token_expired");
-                throw new JwtException("Token expired");
-            } catch (JwtException e) {
-                request.setAttribute("exception", "invalid_token");
-                throw new JwtException("Invalid token");
-            } catch (Exception _) {
+        String header = request.getHeader("Authorization");
+        logger.info("Authorization header : {}", header);
+
+        if (header != null && header.startsWith("Bearer ")) {
+
+
+            //token extract and validate then authentication create and then security context ke ander set karunga.
+
+            String token = header.substring(7);
+            //check for access token
+
+            try {
+
+                if (!jwtService.isAccessToken(token)) {
+                    //message pass kar hai---
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+
+                Jws<Claims> parse = jwtService.parse(token);
+
+
+                Claims payload = parse.getPayload();
+
+
+                String userId = payload.getSubject();
+                UUID userUuid = UserHelper.parseUUID(userId);
+
+                userRepository.findById(userUuid).ifPresent(user -> {
+
+                    //check for user enable or not
+
+                    if (user.isEnable()) {
+                        // user mil chuka hai database se
+                        List<GrantedAuthority> authorities = user.getRoles() == null ? List.of() : user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.getName())).collect(Collectors.toList());
+                        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(user.getEmail(), null, authorities);
+                        authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        //final line : to set the authentication to security context
+                        if (SecurityContextHolder.getContext().getAuthentication() == null)
+                            SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
+
+
+                });
+
+
+            } catch (ExpiredJwtException e) {
+                request.setAttribute("error", "Token Expired");
+                // e.printStackTrace();
+
+            } catch (Exception e) {
+                request.setAttribute("error", "Invalid Token");
+//                e.printStackTrace();
 
             }
-        }
-        filterChain.doFilter(request, response);
-    }
 
+
+        }
+
+        filterChain.doFilter(request, response);
+
+
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-
-        if(request.getRequestURI().equals("/api/v1/auth/me")){
-            return false;
-        }
-
         return request.getRequestURI().startsWith("/api/v1/auth");
     }
 }

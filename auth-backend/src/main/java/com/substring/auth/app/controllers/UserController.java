@@ -1,10 +1,12 @@
 package com.substring.auth.app.controllers;
 
+import com.substring.auth.app.config.AppConstants;
 import com.substring.auth.app.dtos.UserDto;
 import com.substring.auth.app.services.UserService;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -48,6 +50,7 @@ public class UserController {
 
     //get user by id
     //api/v1/users/{userId}
+    @PreAuthorize("hasRole('"+ AppConstants.ADMIN_ROLE +"')")
     @GetMapping("/{userId}")
     public ResponseEntity<UserDto> getUserById(@PathVariable("userId") String userId) {
         return ResponseEntity.ok(userService.getUserById(userId));

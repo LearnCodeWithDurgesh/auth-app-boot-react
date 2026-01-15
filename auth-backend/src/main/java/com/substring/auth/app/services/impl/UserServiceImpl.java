@@ -1,10 +1,13 @@
 package com.substring.auth.app.services.impl;
 
+import com.substring.auth.app.config.AppConstants;
 import com.substring.auth.app.dtos.UserDto;
 import com.substring.auth.app.entities.Provider;
+import com.substring.auth.app.entities.Role;
 import com.substring.auth.app.entities.User;
 import com.substring.auth.app.exceptions.ResourceNotFoundException;
 import com.substring.auth.app.helpers.UserHelper;
+import com.substring.auth.app.repositories.RoleRepository;
 import com.substring.auth.app.repositories.UserRepository;
 import com.substring.auth.app.services.UserService;
 import jakarta.transaction.Transactional;
@@ -23,6 +26,8 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
 
+    private final RoleRepository roleRepository;
+
     @Override
     @Transactional
     public UserDto createUser(UserDto userDto) {
@@ -36,7 +41,16 @@ public class UserServiceImpl implements UserService {
         User user = modelMapper.map(userDto, User.class);
         user.setProvider(userDto.getProvider() != null ? userDto.getProvider() : Provider.LOCAL);
         //role assign here to user___for authorization
+
         //TODO:
+        //assign the default role
+
+        Role role = roleRepository.findByName("ROLE_" + AppConstants.GUEST_ROLE).orElse(null);
+        user.getRoles().add(role);
+
+
+
+
         User savedUser = userRepository.save(user);
         return modelMapper.map(savedUser, UserDto.class);
     }

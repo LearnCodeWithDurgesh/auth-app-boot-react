@@ -15,8 +15,6 @@ import java.util.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-
-
 @Entity
 @Table(name = "users")
 public class User implements UserDetails {
@@ -33,6 +31,8 @@ public class User implements UserDetails {
     private boolean enable = true;
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
+
+
 
 
     @Enumerated(EnumType.STRING)

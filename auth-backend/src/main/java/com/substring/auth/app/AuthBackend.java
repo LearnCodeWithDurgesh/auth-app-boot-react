@@ -1,8 +1,8 @@
 package com.substring.auth.app;
 
-import com.substring.auth.app.config.AppConstants;
-import com.substring.auth.app.entities.Role;
-import com.substring.auth.app.repositories.RoleRepository;
+import com.substring.auth.app.auth.config.AppConstants;
+import com.substring.auth.app.auth.entities.Role;
+import com.substring.auth.app.auth.repositories.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;

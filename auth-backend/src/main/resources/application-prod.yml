@@ -1,13 +1,13 @@
 #development version of configurations
 server:
-  port: 8083
+  port: 8080
 
 #  database connections
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/auth_app_yt
-    username: root
-    password: root1234
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
 
   #    hikari:
   #      pool-name: HikariCP
@@ -25,7 +25,7 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
-        format_sql: true
+        format_sql: false
     show-sql: true
   security:
     #    oauth2 configurations
@@ -58,9 +58,8 @@ spring:
 #    jpa and hibernate configurations
 
 
-logging:
-  level:
-    org.springframework.security: DEBUG
+
+
 
 
 security:
@@ -78,8 +77,8 @@ security:
 
 app:
   cors:
-    front-end-url: http://localhost:5173
+    front-end-url: ${FRONT_END_URL:http://localhost:5173}
   auth:
     frontend:
-      success-redirect: http://localhost:5173/oauth/success
-      failure-redirect: http://localhost:5173/oauth/failure
+      success-redirect: ${FRONT_END_SUCCESS_REDIRECT:http://localhost:5173/oauth/success}
+      failure-redirect: ${FRONT_END_FAILURE_REDIRECT:http://localhost:5173/oauth/failure}
